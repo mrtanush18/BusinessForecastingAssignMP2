@@ -1,0 +1,192 @@
+---
+title: "Assignment MP2"
+author: "Tanush Shetty"
+email : "ts1333@scarletmail.rutgers.edu"
+date: "26/10/2024"
+output: html_document
+---
+
+```{r}
+# Set a CRAN mirror
+options(repos = c(CRAN = "https://cran.r-project.org"))
+
+install.packages("pacman")
+library(pacman)
+pacman::p_load(pacman, dplyr, forecast, fpp, fpp2, readr)
+
+data <- read.csv("C:/Users/tanus/Downloads/BF assign 7 mp2/insurance.csv")
+
+head(data)
+
+str(data)
+``` 
+#1. Create Timeseries
+```{r}
+ts_data = ts(data$Quotes, frequency = 12, start = c(2002,1), end=c(2005,4))
+
+plot(ts_data, main = "Monthly Quotes Time Series (Jan 2002 to Apr 2005)", ylab = "Quotes", xlab = "Time")
+
+``` 
+# 2. Verify how much history to include in your analysis.
+```{r}
+# Visualize the full time series
+plot(ts_data, main = "Full Quotes Time Series", ylab = "Quotes", xlab = "Year")
+
+# Visualize recent years only 
+recent_data <- window(ts_data, start = max(time(ts_data)) - 9)
+plot(recent_data, main = "Recent 10 Years Quotes Time Series", ylab = "Quotes", xlab = "Year")
+
+``` 
+# 3. Hypothesize if the dataset has trend, seasonality, or both.
+Looking at the graph, there doesn't appear to be a clear upward or downward trend in the dataset. The values fluctuate over time, but there isn't a consistent increase or decrease across the years. This suggests the data may lack a long-term trend. There is some indication of recurring fluctuations, with peaks and valleys appearing at semi-regular intervals. This could suggest seasonal effects, although, with only a few cycles visible, it’s difficult to confirm without additional data or analysis.
+
+# 4. Verify using Acf
+```{r}
+acf(ts_data)
+
+# Based on the ACF, it seems there is a trend in the data. There’s a strong autocorrelation at the initial lags (1, 2, and possibly 3). which suggests that the values in the series are related over short intervals, indicating a trend in the data.
+
+```
+
+# 5. Verify using decomposition
+The decomposition analysis was performed using a multiplicative model, which broke the time series into three components:
+Trend: A visible long-term movement, confirming the presence of a trend.
+Seasonality: The repeating cyclical pattern, confirming that the data exhibits seasonal behavior.
+Residual (Noise): Random fluctuations that are not explained by trend or seasonality.
+```{r}
+decomposed <- decompose(ts_data)
+plot(decomposed)
+```
+
+# 6. Choose an accuracy measure
+The seasonal component shows repeated patterns at consistent intervals, confirming that there is seasonality in the data. MAPE (Mean Absolute Percentage Error) would be ideal for this data as it expresses accuracy as a percentage, which makes it easy to interpret, especially when seasonality is present.
+```{r}
+
+```
+# 7. Create a forecast model for the next 12 months. Include Naive, Average, Exponential Smoothing, HoltWinters, and Decomposition (both types).
+```{r}
+train <- window(ts_data, end = c(2005, 1))
+test <- window(ts_data, start = c(2005, 4))
+
+# 1. Naive model
+naive_model <- naive(train, h = 12)
+naive_forecast <- forecast(naive_model, h = 12)
+
+# 2. Average method
+mean_forecast <- meanf(train, h = 12)
+
+# 3. Exponential Smoothing
+exp_smooth_model <- ses(train, h = 12)
+exp_smooth_forecast <- forecast(exp_smooth_model, h = 12)
+
+# 4. Holt-Winters Additive Model
+# hw_add_model <- hw(train, seasonal = "additive", h = 12)
+# hw_add_forecast <- forecast(hw_add_model)
+
+# 5. Holt-Winters Multiplicative Model
+# hw_mult_model <- hw(ts_data, seasonal = "multiplicative", h = 12)
+# hw_mult_forecast <- forecast(hw_mult_model)
+
+# 6. Decomposition Forecast
+# decomposed_add <- decompose(ts_data, type = "additive")
+# decomposed_mult <- decompose(ts_data, type = "multiplicative")
+
+# # The time series selected is too short to be used for Holt-Winters and Decomposition.
+
+# Plot forecasts
+autoplot(naive_forecast) + ggtitle("Naive Forecast")
+autoplot(mean_forecast) + ggtitle("Mean Forecast")
+autoplot(exp_smooth_forecast) + ggtitle("Exponential Smoothing Forecast")
+
+# Display results for all models
+print(naive_forecast)
+print(mean_forecast)
+print(exp_smooth_forecast)
+```
+
+8. Show model rank with accuracy measures
+```{r}
+library(forecast)
+naive = accuracy(naive_model, test)
+meanf = accuracy(mean_forecast, test)
+exp_smooth = accuracy(exp_smooth_model, test)
+
+# Extract MAPE value
+naive_mape <- naive["Test set", "MAPE"]
+cat("Mean Absolute Percentage Error (MAPE):", naive_mape, "%\n")
+
+meanf_mape <- meanf["Test set", "MAPE"]
+cat("Mean Absolute Percentage Error (MAPE):", meanf_mape, "%\n")
+
+exp_smooth_mape <- exp_smooth["Test set", "MAPE"]
+cat("Mean Absolute Percentage Error (MAPE):", exp_smooth_mape, "%\n")
+
+
+# Ranked Models Based on MAPE:
+# Store MAPE values in a named list
+mape_values <- list(
+  naive_mape,
+  meanf_mape,
+  exp_smooth_mape
+)
+# 
+# # Sort MAPE values in ascending order to rank the models
+# mape_ranking <- sort(mape_values)
+# 
+# # Print the ranked MAPE values
+# cat("Model ranking based on MAPE:\n")
+# print(mape_ranking)
+
+```
+<!-- # Overall Best Model -->
+<!-- Considering all accuracy measures, the Holt-Winters Additive Model consistently comes out on top. It performs exceptionally well across most measures, making it the overall best model for the data. -->
+
+<!-- 9. Choose which models and how are you going to use them for Forecasting -->
+<!-- Based on the accuracy measures, I will use the Holt-Winters Additive Model and the Holt-Winters Multiplicative Model for forecasting. These models consistently showed the best performance across various accuracy metrics. -->
+
+<!-- # Holt-Winters Additive Model -->
+<!-- ```{r} -->
+<!-- # Fit the Model: -->
+<!-- hw_add_model <- HoltWinters(ts_data, seasonal = "additive") -->
+
+
+<!-- # Generate Forecast: -->
+<!-- hw_add_forecast <- forecast(hw_add_model, h = 12)  # Next 12 periods -->
+<!-- plot(hw_add_forecast) -->
+<!-- ``` -->
+<!-- # Holt-Winters Multiplicative Model -->
+<!-- ```{r} -->
+<!-- # Fit the Model: -->
+<!-- hw_mult_model <- HoltWinters(ts_data, seasonal = "multiplicative") -->
+
+<!-- # Generate Forecast: -->
+<!-- hw_mult_forecast <- forecast(hw_mult_model, h = 12) -->
+<!-- plot(hw_mult_forecast) -->
+<!-- ``` -->
+
+<!-- 10. Provide the forecast for the next 12 months (point and range) and explain why you feel confident with these forecasts -->
+
+<!-- # Holt-Winters Additive Model -->
+<!-- ```{r} -->
+<!-- # Generate forecast for the next 12 months -->
+<!-- hw_add_forecast <- forecast(hw_add_model, h = 12) -->
+
+<!-- # Print the forecast values (point forecasts and prediction intervals) -->
+<!-- print(hw_add_forecast) -->
+<!-- ``` -->
+<!-- # Holt-Winters Multiplicative Model -->
+<!-- ```{r} -->
+<!-- # Generate forecast for the next 12 months -->
+<!-- hw_mult_forecast <- forecast(hw_mult_model, h = 12) -->
+
+<!-- # Print the forecast values (point forecasts and prediction intervals) -->
+<!-- print(hw_mult_forecast) -->
+<!-- ``` -->
+<!-- These forecasts include both point predictions and prediction intervals, providing a range that indicates the uncertainty around the point forecasts. -->
+
+<!-- Confidence in Forecasts -->
+<!-- Historical Performance: Both models showed strong accuracy metrics (low MAPE, RMSE, and MAE), indicating they’ve been good at predicting past data. -->
+
+<!-- Seasonality and Trends: These models explicitly account for seasonality and trends for the data, which is crucial for time series forecasting. -->
+
+<!-- Model Reliability: Holt-Winters models are well-established methods for handling seasonal data, making them reliable choices for the dataset. -->
